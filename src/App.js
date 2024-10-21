@@ -182,7 +182,7 @@ function SecretSantaApp() {
      <div className="snow"></div>
      <div className="snow"></div>
      <div className="max-w-md w-full space-y-8 bg-white p-6 rounded-xl shadow-md relative z-10">
-       <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">
+       <h1 className="text-3xl font-extrabold text-center shimmering-title mb-6">
          Secret Santa Generator
        </h1>
 
@@ -192,10 +192,10 @@ function SecretSantaApp() {
            value={newName}
            onChange={(e) => setNewName(e.target.value)}
            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                addParticipant();
-              }
-            }}
+             if (e.key === "Enter") {
+               addParticipant();
+             }
+           }}
            placeholder="Participant Name"
            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
          />
