@@ -1,0 +1,66 @@
+@keyframes snowfall {
+    0% {
+        transform: translate3d(0, -100%, 0);
+    }
+
+    100% {
+        transform: translate3d(0, 100vh, 0);
+    }
+}
+
+.snow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.snow::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
+}
+
+.snow::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(4px 4px at 100px 50px, #fff, transparent),
+        radial-gradient(6px 6px at 200px 150px, #fff, transparent),
+        radial-gradient(3px 3px at 300px 250px, #fff, transparent),
+        radial-gradient(4px 4px at 400px 350px, #fff, transparent);
+    background-size: 550px 550px;
+    animation: snowfall 7s linear infinite;
+    opacity: 0.7;
+}
+
+.snow:nth-child(2)::after {
+    background-position: 100px 50px;
+    animation-duration: 10s;
+}
+
+.snow:nth-child(3)::after {
+    background-position: 200px 100px;
+    animation-duration: 13s;
+}
+
+.snow:nth-child(4)::after {
+    background-position: 300px 150px;
+    animation-duration: 8s;
+}
+
+.snow:nth-child(5)::after {
+    background-position: 400px 200px;
+    animation-duration: 15s;
+}
