@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 function generateSecretSantaPairs(participants, previousPairings) {
   const shuffled = [...participants];
@@ -6,7 +6,6 @@ function generateSecretSantaPairs(participants, previousPairings) {
   const maxAttempts = 100;
 
   while (attempts < maxAttempts) {
-    // Fisher-Yates shuffle
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -14,8 +13,8 @@ function generateSecretSantaPairs(participants, previousPairings) {
 
     let isValid = true;
     for (let i = 0; i < participants.length; i++) {
-      const giver = participants[i].name;
-      const receiver = shuffled[i].name;
+      const giver = participants[i];
+      const receiver = shuffled[i];
 
       if (
         giver === receiver ||
@@ -28,9 +27,8 @@ function generateSecretSantaPairs(participants, previousPairings) {
 
     if (isValid) {
       return participants.map((giver, index) => ({
-        giver: giver.name,
-        giverPhone: giver.phone,
-        receiver: shuffled[index].name,
+        giver,
+        receiver: shuffled[index],
       }));
     }
 
@@ -42,67 +40,81 @@ function generateSecretSantaPairs(participants, previousPairings) {
   );
 }
 
-function sendTextMessage(phoneNumber, message) {
-  console.log(`Sending SMS to ${phoneNumber}: ${message}`);
-  // In a real application, you would integrate with an SMS API here
-}
-
-const phoneRegex = /^(\+\d{1,2}\s?)?(\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}$/;
-
 function SecretSantaApp() {
-  const [participants, setParticipants] = useState([]);
+  const [participants, setParticipants] = useState(() => {
+    const saved = localStorage.getItem("secretSantaParticipants");
+    console.log("Initial load - participants:", saved);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [previousPairings, setPreviousPairings] = useState(() => {
+    const saved = localStorage.getItem("secretSantaPreviousPairings");
+    console.log("Initial load - previous pairings:", saved);
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [isPhoneValid, setIsPhoneValid] = useState(true);
-  const [previousPairings, setPreviousPairings] = useState({});
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [previousGiver, setPreviousGiver] = useState("");
   const [previousReceiver, setPreviousReceiver] = useState("");
 
-  const validatePhone = (phone) => {
-    return phoneRegex.test(phone);
-  };
+  useEffect(() => {
+    console.log("Saving participants to localStorage:", participants);
+    localStorage.setItem(
+      "secretSantaParticipants",
+      JSON.stringify(participants)
+    );
+  }, [participants]);
 
-  const handlePhoneChange = (e) => {
-    const phone = e.target.value;
-    setNewPhone(phone);
-    setIsPhoneValid(validatePhone(phone));
-  };
+  useEffect(() => {
+    console.log("Saving previous pairings to localStorage:", previousPairings);
+    localStorage.setItem(
+      "secretSantaPreviousPairings",
+      JSON.stringify(previousPairings)
+    );
+  }, [previousPairings]);
 
   const addParticipant = () => {
-    if (newName) { // && newPhone && isPhoneValid) {
-      if (participants.some((p) => p.name === newName)) {
+    if (newName) {
+      if (participants.includes(newName)) {
         setError("A participant with this name already exists.");
         return;
       }
-      setParticipants([...participants, { name: newName, phone: newPhone }]);
+      setParticipants((prev) => {
+        const updated = [...prev, newName];
+        console.log("Adding participant, new state:", updated);
+        return updated;
+      });
       setNewName("");
-      setNewPhone("");
-      setIsPhoneValid(true);
       setError(null);
     }
   };
 
-  const removeParticipant = useCallback(
-    (nameToRemove) => {
-      setParticipants(participants.filter((p) => p.name !== nameToRemove));
-      setPreviousPairings((prev) => {
-        const newPairings = { ...prev };
-        delete newPairings[nameToRemove];
-        Object.keys(newPairings).forEach((giver) => {
-          newPairings[giver] = newPairings[giver].filter(
-            (receiver) => receiver !== nameToRemove
-          );
-          if (newPairings[giver].length === 0) {
-            delete newPairings[giver];
-          }
-        });
-        return newPairings;
+  const removeParticipant = useCallback((nameToRemove) => {
+    setParticipants((prev) => {
+      const updated = prev.filter((p) => p !== nameToRemove);
+      console.log("Removing participant, new state:", updated);
+      return updated;
+    });
+    setPreviousPairings((prev) => {
+      const newPairings = { ...prev };
+      delete newPairings[nameToRemove];
+      Object.keys(newPairings).forEach((giver) => {
+        newPairings[giver] = newPairings[giver].filter(
+          (receiver) => receiver !== nameToRemove
+        );
+        if (newPairings[giver].length === 0) {
+          delete newPairings[giver];
+        }
       });
-    },
-    [participants, setPreviousPairings]
-  );
+      console.log(
+        "Updating previous pairings after removal, new state:",
+        newPairings
+      );
+      return newPairings;
+    });
+  }, []);
 
   const addPreviousPairing = () => {
     if (
@@ -114,10 +126,14 @@ function SecretSantaApp() {
         setError("This pairing already exists.");
         return;
       }
-      setPreviousPairings((prev) => ({
-        ...prev,
-        [previousGiver]: [...(prev[previousGiver] || []), previousReceiver],
-      }));
+      setPreviousPairings((prev) => {
+        const updated = {
+          ...prev,
+          [previousGiver]: [...(prev[previousGiver] || []), previousReceiver],
+        };
+        console.log("Adding previous pairing, new state:", updated);
+        return updated;
+      });
       setPreviousGiver("");
       setPreviousReceiver("");
       setError(null);
@@ -131,6 +147,7 @@ function SecretSantaApp() {
       if (newPairings[giver].length === 0) {
         delete newPairings[giver];
       }
+      console.log("Removing previous pairing, new state:", newPairings);
       return newPairings;
     });
   }, []);
@@ -138,18 +155,22 @@ function SecretSantaApp() {
   const organizeSecretSanta = () => {
     try {
       const pairings = generateSecretSantaPairs(participants, previousPairings);
-
-      pairings.forEach((pair) => {
-        const message = `Hello ${pair.giver}! You are the Secret Santa for ${pair.receiver}. Happy gifting!`;
-        sendTextMessage(pair.giverPhone, message);
-      });
-
       setResult(pairings);
       setError(null);
     } catch (error) {
       setError(error.message);
       setResult(null);
     }
+  };
+
+  const clearAllData = () => {
+    setParticipants([]);
+    setPreviousPairings({});
+    setResult(null);
+    setError(null);
+    localStorage.removeItem("secretSantaParticipants");
+    localStorage.removeItem("secretSantaPreviousPairings");
+    console.log("All data cleared from localStorage");
   };
 
   return (
@@ -159,6 +180,7 @@ function SecretSantaApp() {
       <div className="mb-4">
         <input
           type="text"
+          autoCapitalize="on"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => {
@@ -166,10 +188,9 @@ function SecretSantaApp() {
               addParticipant();
             }
           }}
-          placeholder="Name"
+          placeholder="Participant Name"
           className="w-full p-2 mb-2 border rounded"
         />
-
         <button
           onClick={addParticipant}
           disabled={!newName}
@@ -186,9 +207,9 @@ function SecretSantaApp() {
       <ul className="mb-4">
         {participants.map((p, index) => (
           <li key={index} className="mb-1 flex justify-between items-center">
-            <span>{p.name}</span>
+            <span>{p}</span>
             <button
-              onClick={() => removeParticipant(p.name)}
+              onClick={() => removeParticipant(p)}
               className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
             >
               Remove
@@ -207,8 +228,8 @@ function SecretSantaApp() {
           >
             <option value="">Select Giver</option>
             {participants.map((p, index) => (
-              <option key={index} value={p.name}>
-                {p.name}
+              <option key={index} value={p}>
+                {p}
               </option>
             ))}
           </select>
@@ -219,10 +240,10 @@ function SecretSantaApp() {
           >
             <option value="">Select Receiver</option>
             {participants
-              .filter((p) => p.name !== previousGiver)
+              .filter((p) => p !== previousGiver)
               .map((p, index) => (
-                <option key={index} value={p.name}>
-                  {p.name}
+                <option key={index} value={p}>
+                  {p}
                 </option>
               ))}
           </select>
@@ -248,7 +269,7 @@ function SecretSantaApp() {
               <li key={giver}>
                 {giver} →
                 {receivers.map((receiver) => (
-                  <span key={receiver} className="mr-2">
+                  <span key={receiver} className="mx-2">
                     {receiver}
                     <button
                       onClick={() => removePreviousPairing(giver, receiver)}
@@ -274,6 +295,13 @@ function SecretSantaApp() {
         }`}
       >
         Organize Secret Santa
+      </button>
+
+      <button
+        onClick={clearAllData}
+        className="w-full mt-4 p-2 text-white bg-red-500 rounded hover:bg-red-600"
+      >
+        Clear All Data
       </button>
 
       {error && (
