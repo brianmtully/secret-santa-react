@@ -183,7 +183,7 @@ function SecretSantaApp() {
      <div className="snow"></div>
      <div className="max-w-md w-full space-y-8 bg-white p-6 rounded-xl shadow-md relative z-10">
        <h1 className="text-3xl font-extrabold text-center text-gray-900 mb-6">
-         Secret Santa Organizer
+         Secret Santa Generator
        </h1>
 
        <div className="space-y-4">
@@ -314,7 +314,7 @@ function SecretSantaApp() {
                : "bg-gray-400 cursor-not-allowed"
            }`}
          >
-           Organize Secret Santa
+           Generate Secret Santa
          </button>
 
          <button
