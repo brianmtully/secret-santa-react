@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/secret-santa-react/static/css/main.ff11f425.css",
-    "main.js": "/secret-santa-react/static/js/main.4d71a250.js",
+    "main.css": "/secret-santa-react/static/css/main.a3821f10.css",
+    "main.js": "/secret-santa-react/static/js/main.157b61af.js",
     "index.html": "/secret-santa-react/index.html",
-    "main.ff11f425.css.map": "/secret-santa-react/static/css/main.ff11f425.css.map",
-    "main.4d71a250.js.map": "/secret-santa-react/static/js/main.4d71a250.js.map"
+    "main.a3821f10.css.map": "/secret-santa-react/static/css/main.a3821f10.css.map",
+    "main.157b61af.js.map": "/secret-santa-react/static/js/main.157b61af.js.map"
   },
   "entrypoints": [
-    "static/css/main.ff11f425.css",
-    "static/js/main.4d71a250.js"
+    "static/css/main.a3821f10.css",
+    "static/js/main.157b61af.js"
   ]
 }
