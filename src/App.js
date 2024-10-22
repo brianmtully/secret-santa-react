@@ -60,6 +60,92 @@ function SecretSantaApp() {
   const [previousGiver, setPreviousGiver] = useState("");
   const [previousReceiver, setPreviousReceiver] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [savedResults, setSavedResults] = useState(() => {
+    const saved = localStorage.getItem("secretSantaResults");
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const compressed = params.get("r");
+
+  if (compressed) {
+    const decodedResults = decompress(compressed);
+    if (decodedResults) {
+      setResult(decodedResults);
+      setShowResults(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }
+}, []);
+
+  const saveResults = () => {
+    const resultWithDate = {
+      date: new Date().toISOString(),
+      pairings: result,
+    };
+    setSavedResults((prev) => {
+      const updated = [...prev, resultWithDate];
+      localStorage.setItem("secretSantaResults", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const exportResults = () => {
+    const resultText =
+      `Secret Santa Pairings - ${new Date().toLocaleDateString()}\n\n` +
+      result.map((pair) => `${pair.giver} → ${pair.receiver}`).join("\n");
+
+    const blob = new Blob([resultText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `secret-santa-${new Date().toLocaleDateString()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const compress = (data) => {
+    try {
+      const stringified = JSON.stringify(data);
+      // Convert to base64 and remove padding equals signs
+      return btoa(stringified).replace(/=/g, "");
+    } catch (e) {
+      console.error("Compression failed:", e);
+      return null;
+    }
+  };
+
+  const decompress = (compressed) => {
+    try {
+      // Add back padding if needed
+      const padded = compressed + "=".repeat((4 - (compressed.length % 4)) % 4);
+      return JSON.parse(atob(padded));
+    } catch (e) {
+      console.error("Decompression failed:", e);
+      return null;
+    }
+  };
+
+const shareResults = async () => {
+  const compressed = compress(result);
+  const shareUrl = `${window.location.origin}${window.location.pathname}?r=${compressed}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Secret Santa Pairings",
+        text: "Check out our Secret Santa pairings!",
+        url: shareUrl,
+      });
+    } catch (err) {
+      await navigator.clipboard.writeText(shareUrl);
+    }
+  } else {
+    await navigator.clipboard.writeText(shareUrl);
+  }
+};
 
   useEffect(() => {
     console.log("Saving participants to localStorage:", participants);
@@ -171,18 +257,28 @@ const returnToForm = () => {
   setResult(null);
 };
 
-  const clearAllData = () => {
-    setParticipants([]);
-    setPreviousPairings({});
-    setResult(null);
-    setError(null);
-    localStorage.removeItem("secretSantaParticipants");
-    localStorage.removeItem("secretSantaPreviousPairings");
-    console.log("All data cleared from localStorage");
-  };
+const clearAllData = () => {
+  setParticipants([]);
+  setPreviousPairings({});
+  setResult(null);
+  setError(null);
+  setSavedResults([]);
+  localStorage.removeItem("secretSantaParticipants");
+  localStorage.removeItem("secretSantaPreviousPairings");
+  localStorage.removeItem("secretSantaResults");
+  console.log("All data cleared from localStorage");
+};
 
  return (
-   <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+   <div className="min-h-screen bg-gray-900 flex items-center justify-center py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+     {!showResults ? (
+       <button
+         onClick={clearAllData}
+         className="absolute top-4 right-4 p-3 text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-200"
+       >
+         <i className="fas fa-undo"></i>
+       </button>
+     ) : null}
      <div className="snow"></div>
      <div className="snow"></div>
      <div className="snow"></div>
@@ -193,176 +289,220 @@ const returnToForm = () => {
          Secret Santa Generator
        </h1>
 
-        {showResults ? (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold mb-3">Results:</h2>
-            <ul className="space-y-2">
-              {result.map((pair, index) => (
-                <li key={index} className="bg-green-100 p-3 rounded-md">
-                  {pair.giver} → {pair.receiver}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <button
-            onClick={returnToForm}
-            className="w-full p-3 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition duration-200"
-          >
-            Return to Form
-          </button>
-        </div>
-      ) : (
-        // Wrap all your existing form content in this else block
-        <div>
-       <div className="space-y-4">
-         <input
-           type="text"
-           value={newName}
-           onChange={(e) => setNewName(e.target.value)}
-           onKeyDown={(e) => {
-             if (e.key === "Enter") {
-               addParticipant();
-             }
-           }}
-           placeholder="Participant Name"
-           className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-         />
-         <button
-           onClick={addParticipant}
-           disabled={!newName}
-           className={`w-full p-3 text-white rounded-md transition duration-200 ${
-             newName
-               ? "bg-blue-600 hover:bg-blue-700"
-               : "bg-gray-400 cursor-not-allowed"
-           }`}
-         >
-           Add Participant
-         </button>
-       </div>
-
-       {participants.length > 0 && (
-         <div className="mt-6">
-           <h2 className="text-xl font-bold mb-3">Participants</h2>
-           <ul className="space-y-2">
-             {participants.map((p, index) => (
-               <li
-                 key={index}
-                 className="flex justify-between items-center bg-gray-100 p-3 rounded-md"
-               >
-                 <span>{p}</span>
-                 <button
-                   onClick={() => removeParticipant(p)}
-                   className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-200"
+       {showResults ? (
+         <div className="space-y-6">
+           <div>
+             <h2 className="text-xl font-bold mb-3">Current Results:</h2>
+             <ul className="space-y-2">
+               {result.map((pair, index) => (
+                 <li
+                   key={index}
+                   className="bg-green-100 p-3 rounded-md text-lg"
                  >
-                   Remove
-                 </button>
-               </li>
-             ))}
-           </ul>
-         </div>
-       )}
-
-       {participants.length > 1 && (
-         <div className="mt-6">
-           <h2 className="text-xl font-bold mb-3">Previous Year's Matches</h2>
-           <select
-             value={previousGiver}
-             onChange={(e) => setPreviousGiver(e.target.value)}
-             className="w-full p-3 mb-2 border border-gray-300 rounded-md"
-           >
-             <option value="">Select Giver</option>
-             {participants.map((p, index) => (
-               <option key={index} value={p}>
-                 {p}
-               </option>
-             ))}
-           </select>
-           <select
-             value={previousReceiver}
-             onChange={(e) => setPreviousReceiver(e.target.value)}
-             className="w-full p-3 mb-2 border border-gray-300 rounded-md"
-           >
-             <option value="">Select Receiver</option>
-             {participants
-               .filter((p) => p !== previousGiver)
-               .map((p, index) => (
-                 <option key={index} value={p}>
-                   {p}
-                 </option>
+                   {pair.giver} → {pair.receiver}
+                 </li>
                ))}
-           </select>
-           <button
-             onClick={addPreviousPairing}
-             disabled={!previousGiver || !previousReceiver}
-             className={`w-full p-3 text-white rounded-md transition duration-200 ${
-               previousGiver && previousReceiver
-                 ? "bg-purple-600 hover:bg-purple-700"
-                 : "bg-gray-400 cursor-not-allowed"
-             }`}
-           >
-             Add Previous Match
-           </button>
-         </div>
-       )}
+             </ul>
+           </div>
 
-       {Object.keys(previousPairings).length > 0 && (
-         <div className="mt-6">
-           <h3 className="font-bold mb-2">Previous Matches:</h3>
-           <ul className="space-y-2">
-             {Object.entries(previousPairings).map(([giver, receivers]) => (
-               <li key={giver} className="bg-gray-100 p-3 rounded-md">
-                 {giver} →
-                 {receivers.map((receiver) => (
-                   <span
-                     key={receiver}
-                     className="ml-2 inline-flex items-center"
-                   >
-                     {receiver}
-                     <button
-                       onClick={() => removePreviousPairing(giver, receiver)}
-                       className="ml-1 text-red-500 hover:text-red-700"
-                     >
-                       ×
-                     </button>
-                   </span>
+           <div className="grid grid-cols-2 gap-2">
+             <button
+               onClick={saveResults}
+               className="p-3 text-white bg-purple-600 rounded-md hover:bg-purple-700 transition duration-200 flex items-center justify-center"
+             >
+               Save Results
+             </button>
+
+             <button
+               onClick={exportResults}
+               className="p-3 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition duration-200 flex items-center justify-center"
+             >
+               Download
+             </button>
+
+             <button
+               onClick={shareResults}
+               className="p-3 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200 flex items-center justify-center"
+             >
+               Share Link
+             </button>
+
+             <button
+               onClick={returnToForm}
+               className="p-3 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition duration-200 flex items-center justify-center"
+             >
+               Return to Form
+             </button>
+           </div>
+
+           {savedResults.length > 0 && (
+             <div className="mt-6">
+               <h3 className="text-lg font-bold mb-2">Previous Results</h3>
+               <div className="space-y-2 max-h-60 overflow-y-auto">
+                 {savedResults.map((saved, index) => (
+                   <div key={index} className="p-3 bg-gray-50 rounded-md">
+                     <div className="font-medium text-gray-600 mb-2">
+                       {new Date(saved.date).toLocaleDateString()} at{" "}
+                       {new Date(saved.date).toLocaleTimeString()}
+                     </div>
+                     <ul className="space-y-1">
+                       {saved.pairings.map((pair, pairIndex) => (
+                         <li key={pairIndex} className="text-sm">
+                           {pair.giver} → {pair.receiver}
+                         </li>
+                       ))}
+                     </ul>
+                   </div>
                  ))}
-               </li>
-             ))}
-           </ul>
+               </div>
+             </div>
+           )}
+         </div>
+       ) : (
+         <div>
+           <div className="space-y-4">
+             <input
+               type="text"
+               value={newName}
+               onChange={(e) => setNewName(e.target.value)}
+               onKeyDown={(e) => {
+                 if (e.key === "Enter") {
+                   addParticipant();
+                 }
+               }}
+               placeholder="Participant Name"
+               className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+             />
+             <button
+               onClick={addParticipant}
+               disabled={!newName}
+               className={`w-full p-3 text-white rounded-md transition duration-200 ${
+                 newName
+                   ? "bg-blue-600 hover:bg-blue-700"
+                   : "bg-gray-400 cursor-not-allowed"
+               }`}
+             >
+               Add Participant
+             </button>
+           </div>
+
+           {participants.length > 0 && (
+             <div className="mt-6">
+               <h2 className="text-xl font-bold mb-3">Participants</h2>
+               <ul className="space-y-2">
+                 {participants.map((p, index) => (
+                   <li
+                     key={index}
+                     className="flex justify-between items-center bg-gray-100 p-3 rounded-md"
+                   >
+                     <span>{p}</span>
+                     <button
+                       onClick={() => removeParticipant(p)}
+                       className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-200"
+                     >
+                       <i className="fas fa-trash-can"></i>
+                     </button>
+                   </li>
+                 ))}
+               </ul>
+             </div>
+           )}
+
+           {participants.length > 1 && (
+             <div className="mt-6">
+               <h2 className="text-xl font-bold mb-3">
+                 Previous Year's Matches
+               </h2>
+               <select
+                 value={previousGiver}
+                 onChange={(e) => setPreviousGiver(e.target.value)}
+                 className="w-full p-3 mb-2 border border-gray-300 rounded-md"
+               >
+                 <option value="">Select Giver</option>
+                 {participants.map((p, index) => (
+                   <option key={index} value={p}>
+                     {p}
+                   </option>
+                 ))}
+               </select>
+               <select
+                 value={previousReceiver}
+                 onChange={(e) => setPreviousReceiver(e.target.value)}
+                 className="w-full p-3 mb-2 border border-gray-300 rounded-md"
+               >
+                 <option value="">Select Receiver</option>
+                 {participants
+                   .filter((p) => p !== previousGiver)
+                   .map((p, index) => (
+                     <option key={index} value={p}>
+                       {p}
+                     </option>
+                   ))}
+               </select>
+               <button
+                 onClick={addPreviousPairing}
+                 disabled={!previousGiver || !previousReceiver}
+                 className={`w-full p-3 text-white rounded-md transition duration-200 ${
+                   previousGiver && previousReceiver
+                     ? "bg-purple-600 hover:bg-purple-700"
+                     : "bg-gray-400 cursor-not-allowed"
+                 }`}
+               >
+                 Add Previous Match
+               </button>
+             </div>
+           )}
+
+           {Object.keys(previousPairings).length > 0 && (
+             <div className="mt-6">
+               <h3 className="font-bold mb-2">Previous Matches:</h3>
+               <ul className="space-y-2">
+                 {Object.entries(previousPairings).map(([giver, receivers]) => (
+                   <li key={giver} className="bg-gray-100 p-3 rounded-md">
+                     {giver} →
+                     {receivers.map((receiver) => (
+                       <span
+                         key={receiver}
+                         className="ml-2 inline-flex items-center"
+                       >
+                         {receiver}
+                         <button
+                           onClick={() =>
+                             removePreviousPairing(giver, receiver)
+                           }
+                           className="ml-1 text-red-500 hover:text-red-700"
+                         >
+                           ×
+                         </button>
+                       </span>
+                     ))}
+                   </li>
+                 ))}
+               </ul>
+             </div>
+           )}
+
+           <div className="mt-6 space-y-4">
+             <button
+               onClick={organizeSecretSanta}
+               disabled={participants.length < 2}
+               className={`w-full p-3 text-white rounded-md transition duration-200 ${
+                 participants.length >= 2
+                   ? "bg-green-600 hover:bg-green-700"
+                   : "bg-gray-400 cursor-not-allowed"
+               }`}
+             >
+               Generate Secret Santa
+             </button>
+           </div>
+
+           {error && (
+             <div className="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+               <p>{error}</p>
+             </div>
+           )}
          </div>
        )}
-
-       <div className="mt-6 space-y-4">
-         <button
-           onClick={organizeSecretSanta}
-           disabled={participants.length < 2}
-           className={`w-full p-3 text-white rounded-md transition duration-200 ${
-             participants.length >= 2
-               ? "bg-green-600 hover:bg-green-700"
-               : "bg-gray-400 cursor-not-allowed"
-           }`}
-         >
-           Generate Secret Santa
-         </button>
-
-         <button
-           onClick={clearAllData}
-           className="w-full p-3 text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-200"
-         >
-           Clear All Data
-         </button>
-       </div>
-
-       {error && (
-         <div className="mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
-           <h3 className="font-bold">Error</h3>
-           <p>{error}</p>
-         </div>
-       )}
-      </div>
-      )}
-
      </div>
    </div>
  );
