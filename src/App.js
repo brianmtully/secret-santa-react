@@ -59,6 +59,7 @@ function SecretSantaApp() {
   const [error, setError] = useState(null);
   const [previousGiver, setPreviousGiver] = useState("");
   const [previousReceiver, setPreviousReceiver] = useState("");
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     console.log("Saving participants to localStorage:", participants);
@@ -153,16 +154,22 @@ function SecretSantaApp() {
     });
   }, []);
 
-  const organizeSecretSanta = () => {
-    try {
-      const pairings = generateSecretSantaPairs(participants, previousPairings);
-      setResult(pairings);
-      setError(null);
-    } catch (error) {
-      setError(error.message);
-      setResult(null);
-    }
-  };
+const organizeSecretSanta = () => {
+  try {
+    const pairings = generateSecretSantaPairs(participants, previousPairings);
+    setResult(pairings);
+    setError(null);
+    setShowResults(true); // Add this line
+  } catch (error) {
+    setError(error.message);
+    setResult(null);
+  }
+};
+
+const returnToForm = () => {
+  setShowResults(false);
+  setResult(null);
+};
 
   const clearAllData = () => {
     setParticipants([]);
@@ -186,6 +193,28 @@ function SecretSantaApp() {
          Secret Santa Generator
        </h1>
 
+        {showResults ? (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-bold mb-3">Results:</h2>
+            <ul className="space-y-2">
+              {result.map((pair, index) => (
+                <li key={index} className="bg-green-100 p-3 rounded-md">
+                  {pair.giver} → {pair.receiver}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button
+            onClick={returnToForm}
+            className="w-full p-3 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition duration-200"
+          >
+            Return to Form
+          </button>
+        </div>
+      ) : (
+        // Wrap all your existing form content in this else block
+        <div>
        <div className="space-y-4">
          <input
            type="text"
@@ -331,19 +360,9 @@ function SecretSantaApp() {
            <p>{error}</p>
          </div>
        )}
+      </div>
+      )}
 
-       {result && (
-         <div className="mt-6">
-           <h2 className="text-xl font-bold mb-3">Results:</h2>
-           <ul className="space-y-2">
-             {result.map((pair, index) => (
-               <li key={index} className="bg-green-100 p-3 rounded-md">
-                 {pair.giver} → {pair.receiver}
-               </li>
-             ))}
-           </ul>
-         </div>
-       )}
      </div>
    </div>
  );
