@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import './SnowAnimation.css';
+import html2canvas from "html2canvas";
 
 function generateSecretSantaPairs(participants, previousPairings) {
   const shuffled = [...participants];
@@ -91,6 +92,28 @@ useEffect(() => {
       return updated;
     });
   };
+
+const captureResults = () => {
+  // Show the screenshot version temporarily
+  const screenshotVersion = document.querySelector("#screenshot-results");
+  if (screenshotVersion) {
+    screenshotVersion.style.display = "block";
+
+    html2canvas(screenshotVersion, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+    }).then((canvas) => {
+      const image = canvas.toDataURL("image/png", 1.0);
+      const link = document.createElement("a");
+      link.download = `secret-santa-${new Date().toLocaleDateString()}.png`;
+      link.href = image;
+      link.click();
+
+      // Hide the screenshot version again
+      screenshotVersion.style.display = "none";
+    });
+  }
+};
 
   const exportResults = () => {
     const resultText =
@@ -284,7 +307,66 @@ const clearAllData = () => {
      <div className="snow"></div>
      <div className="snow"></div>
      <div className="snow"></div>
-     <div className="max-w-md w-full space-y-8 bg-white p-6 rounded-xl shadow-md relative z-10">
+     {result && (
+       <div
+         id="screenshot-results"
+         style={{
+           display: "none",
+           position: "fixed",
+           left: "-9999px",
+           backgroundColor: "#111827", // bg-gray-900
+           padding: "48px",
+           width: "800px",
+         }}
+       >
+         <div
+           style={{
+             backgroundColor: "#ffffff",
+             borderRadius: "12px",
+             padding: "24px",
+             boxShadow:
+               "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+           }}
+         >
+           <h2
+             style={{
+               fontSize: "28px",
+               fontWeight: "bold",
+               marginBottom: "24px",
+               color: "#000000",
+               textAlign: "center",
+             }}
+           >
+             Secret Santa Results
+           </h2>
+           <ul
+             style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+           >
+             {result.map((pair, index) => (
+               <li
+                 key={index}
+                 style={{
+                   backgroundColor: "#ecfdf5",
+                   padding: "16px",
+                   borderRadius: "8px",
+                   color: "#000000",
+                   fontSize: "18px",
+                   textAlign: "center",
+                 }}
+               >
+                 <span style={{ fontWeight: "600" }}>{pair.giver}</span>
+                 <span style={{ margin: "0 12px" }}>→</span>
+                 <span style={{ fontWeight: "600" }}>{pair.receiver}</span>
+               </li>
+             ))}
+           </ul>
+         </div>
+       </div>
+     )}
+     <div
+       id="generator-card"
+       className="max-w-md w-full space-y-8 bg-white p-6 rounded-xl shadow-md relative z-10"
+     >
        <h1 className="text-3xl font-extrabold text-center shimmering-title mb-6">
          Secret Santa Generator
        </h1>
@@ -326,14 +408,19 @@ const clearAllData = () => {
              >
                Share Link
              </button>
-
              <button
-               onClick={returnToForm}
-               className="p-3 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition duration-200 flex items-center justify-center"
+               onClick={captureResults}
+               className="p-3 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition duration-200"
              >
-               Return to Form
+               Save as Image
              </button>
            </div>
+           <button
+             onClick={returnToForm}
+             className="w-full p-3 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition duration-200 flex items-center justify-center"
+           >
+             Return to Form
+           </button>
 
            {savedResults.length > 0 && (
              <div className="mt-6">
@@ -458,7 +545,10 @@ const clearAllData = () => {
                <h3 className="font-bold mb-2">Previous Matches:</h3>
                <ul className="space-y-2">
                  {Object.entries(previousPairings).map(([giver, receivers]) => (
-                   <li key={giver} className="bg-gray-50 shadow-md p-3 rounded-md">
+                   <li
+                     key={giver}
+                     className="bg-gray-50 shadow-md p-3 rounded-md"
+                   >
                      {giver} →
                      {receivers.map((receiver) => (
                        <span
