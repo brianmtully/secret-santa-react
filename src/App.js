@@ -297,7 +297,7 @@ const clearAllData = () => {
                {result.map((pair, index) => (
                  <li
                    key={index}
-                   className="bg-green-100 p-3 rounded-md text-lg"
+                   className="bg-green-100 shadow-md p-3 rounded-md text-lg"
                  >
                    {pair.giver} → {pair.receiver}
                  </li>
@@ -393,7 +393,7 @@ const clearAllData = () => {
                  {participants.map((p, index) => (
                    <li
                      key={index}
-                     className="flex justify-between items-center bg-gray-100 p-3 rounded-md"
+                     className="flex justify-between items-center bg-gray-50 shadow-md p-3 rounded-md"
                    >
                      <span>{p}</span>
                      <button
@@ -458,7 +458,7 @@ const clearAllData = () => {
                <h3 className="font-bold mb-2">Previous Matches:</h3>
                <ul className="space-y-2">
                  {Object.entries(previousPairings).map(([giver, receivers]) => (
-                   <li key={giver} className="bg-gray-100 p-3 rounded-md">
+                   <li key={giver} className="bg-gray-50 shadow-md p-3 rounded-md">
                      {giver} →
                      {receivers.map((receiver) => (
                        <span
