@@ -352,6 +352,7 @@ const clearAllData = () => {
                    color: "#000000",
                    fontSize: "18px",
                    textAlign: "center",
+                   boxShadow: "0 2px 4px 0 rgba(0, 0, 0, 0.1)", // Added drop shadow
                  }}
                >
                  <span style={{ fontWeight: "600" }}>{pair.giver}</span>
