@@ -67,10 +67,70 @@ function SecretSantaApp() {
   });
   const [selectedViewer, setSelectedViewer] = useState("");
   const [revealedPair, setRevealedPair] = useState(null);
+  const [isSharedView, setIsSharedView] = useState(false);
+const [eventTitle, setEventTitle] = useState(() => {
+  const saved = localStorage.getItem("secretSantaEventTitle");
+  return saved || "";
+});
+
+const [eventDate, setEventDate] = useState(() => {
+  const saved = localStorage.getItem("secretSantaEventDate");
+  return saved || "";
+});
+
+const [maxAmount, setMaxAmount] = useState(() => {
+  const saved = localStorage.getItem("secretSantaMaxAmount");
+  return saved || "";
+});
+const [revealClicks, setRevealClicks] = useState(0);
+const [isWiggling, setIsWiggling] = useState(false);
+
+const formatEventDate = (dateString) => {
+  if (!dateString) return "";
+
+  // Create a new date object using the date string with a specific time
+  const date = new Date(`${dateString}T00:00:00`);
+
+  // Get month, day, year components in local time
+  const month = date.getMonth() + 1; // getMonth() returns 0-11
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  // Format as MM/DD/YYYY
+  return `${month}/${day}/${year}`;
+};
+
+// Modified handle click function
+const handleRevealClick = () => {
+  setIsWiggling(true);
+  // Remove wiggle class after animation completes
+  setTimeout(() => setIsWiggling(false), 300);
+
+  if (revealClicks < revealMessages.length - 1) {
+    setRevealClicks((prev) => prev + 1);
+  } else {
+    setRevealedPair(result.results.find((p) => p.giver === selectedViewer));
+    setRevealClicks(0);
+  }
+};
+
+// Array of fun messages
+const revealMessages = [
+  { text: "Are you sure that's you?", color: "bg-blue-600" },
+  { text: "Have you been naughty or nice?", color: "bg-red-600" },
+  { text: "Did you check your list twice?", color: "bg-green-600" },
+  { text: "Do you believe in Christmas magic?", color: "bg-purple-600" },
+  { text: "Promise to keep it a secret?", color: "bg-pink-600" },
+  {
+    text: "Reveal Your Match!",
+    color: "bg-gradient-to-r from-red-500 to-green-500",
+  },
+];
+
 
   // Add this function to handle revealing a pair
   const revealPairForViewer = () => {
-    const pair = result.find((p) => p.giver === selectedViewer);
+    const pair = result.results.find((p) => p.giver === selectedViewer);
     setRevealedPair(pair);
   };
   
@@ -80,11 +140,12 @@ useEffect(() => {
   const compressed = params.get("r");
 
   if (compressed) {
-    const decodedResults = decompress(compressed);
-    if (decodedResults) {
-      setResult(decodedResults);
+    const decodedData = decompress(compressed);
+    if (decodedData) {
+      setResult(decodedData.results);
       setShowResults(true);
-      window.history.replaceState({}, "", window.location.pathname);
+      setIsSharedView(decodedData.shared);
+     // window.history.replaceState({}, "", window.location.pathname);
     }
   }
 }, []);
@@ -92,7 +153,7 @@ useEffect(() => {
   const saveResults = () => {
     const resultWithDate = {
       date: new Date().toISOString(),
-      pairings: result,
+      result: result,
     };
     setSavedResults((prev) => {
       const updated = [...prev, resultWithDate];
@@ -126,7 +187,10 @@ const captureResults = () => {
   const exportResults = () => {
     const resultText =
       `Secret Santa Pairings - ${new Date().toLocaleDateString()}\n\n` +
-      result.map((pair) => `${pair.giver} → ${pair.receiver}`).join("\n");
+      `Event Title: ${result.title}\n` +
+      `Event Date: ${formatEventDate(result.date)}\n` +
+      `Maximum Gift Amount: $${result.maxAmount}\n\n` +
+      result.results.map((pair) => `${pair.giver} → ${pair.receiver}`).join("\n");
 
     const blob = new Blob([resultText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -136,6 +200,14 @@ const captureResults = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+const compressWithViewType = (data, isShared = false) => {
+  const dataWithType = {
+    results: data,
+    shared: isShared,
+  };
+  return compress(dataWithType);
+};
 
   const compress = (data) => {
     try {
@@ -160,14 +232,14 @@ const captureResults = () => {
   };
 
 const shareResults = async () => {
-  const compressed = compress(result);
+  const compressed = compressWithViewType(result, true); // true for shared view
   const shareUrl = `${window.location.origin}${window.location.pathname}?r=${compressed}`;
 
   if (navigator.share) {
     try {
       await navigator.share({
         title: "Secret Santa Pairings",
-        text: "Check out our Secret Santa pairings!",
+        text: "Find out who you are Secret Santa for!",
         url: shareUrl,
       });
     } catch (err) {
@@ -209,6 +281,18 @@ const shareResults = async () => {
       setError(null);
     }
   };
+
+  useEffect(() => {
+    localStorage.setItem("secretSantaEventTitle", eventTitle);
+  }, [eventTitle]);
+
+  useEffect(() => {
+    localStorage.setItem("secretSantaEventDate", eventDate);
+  }, [eventDate]);
+
+  useEffect(() => {
+    localStorage.setItem("secretSantaMaxAmount", maxAmount);
+  }, [maxAmount]);
 
   const removeParticipant = useCallback((nameToRemove) => {
     setParticipants((prev) => {
@@ -271,10 +355,18 @@ const shareResults = async () => {
     });
   }, []);
 
+  
+
 const organizeSecretSanta = () => {
   try {
     const pairings = generateSecretSantaPairs(participants, previousPairings);
-    setResult(pairings);
+    const eventData = {
+      title: eventTitle || "Secret Santa",
+      date: eventDate.split('T')[0],
+      maxAmount: maxAmount,
+      results: pairings,
+    };
+    setResult(eventData);
     setError(null);
     setShowResults(true); // Add this line
   } catch (error) {
@@ -285,7 +377,9 @@ const organizeSecretSanta = () => {
 
 const returnToForm = () => {
   setShowResults(false);
-  setResult(null);
+   setSelectedViewer("");
+  setRevealedPair(null);
+  // setResult(null);
 };
 
 const clearAllData = () => {
@@ -294,9 +388,15 @@ const clearAllData = () => {
   setResult(null);
   setError(null);
   setSavedResults([]);
+  setEventTitle("");
+  setEventDate("");
+  setMaxAmount("");
   localStorage.removeItem("secretSantaParticipants");
   localStorage.removeItem("secretSantaPreviousPairings");
   localStorage.removeItem("secretSantaResults");
+    localStorage.removeItem("secretSantaEventTitle");
+    localStorage.removeItem("secretSantaEventDate");
+    localStorage.removeItem("secretSantaMaxAmount");
   console.log("All data cleared from localStorage");
 };
 
@@ -347,10 +447,54 @@ const clearAllData = () => {
            >
              Secret Santa Results
            </h2>
+           <h3
+             style={{
+               fontSize: "24px",
+               fontWeight: "bold",
+               marginBottom: "12px",
+               color: "#000000",
+               textAlign: "center",
+             }}
+           >
+             {result.title}
+           </h3>
+           {result.date && (
+             <p
+               style={{
+                 fontSize: "18px",
+                 color: "#000000",
+                 textAlign: "center",
+               }}
+             >
+               Date: {formatEventDate(result.date)}
+             </p>
+           )}
+           {result.maxAmount && (
+             <p
+               style={{
+                 fontSize: "18px",
+                 color: "#000000",
+                 textAlign: "center",
+               }}
+             >
+               Maximum Gift Amount: ${result.maxAmount}
+             </p>
+           )}
+           <h3
+             style={{
+               fontSize: "20px",
+               fontWeight: "bold",
+               marginBottom: "12px",
+               color: "#000000",
+               textAlign: "center",
+             }}
+           >
+             Pairings
+           </h3>
            <ul
              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
            >
-             {result.map((pair, index) => (
+             {result.results.map((pair, index) => (
                <li
                  key={index}
                  style={{
@@ -386,7 +530,7 @@ const clearAllData = () => {
            <div>
              <h2 className="text-xl font-bold mb-3">Current Results:</h2>
              <ul className="space-y-2">
-               {result.map((pair, index) => (
+               {result.results.map((pair, index) => (
                  <li
                    key={index}
                    className="bg-green-100 shadow-md p-3 rounded-md text-lg"
@@ -397,6 +541,25 @@ const clearAllData = () => {
              </ul>
            </div>
   */}
+           <div className="bg-gray-50 p-4 rounded-md mb-4 shadow-md">
+             <div className="flex items-center justify-center">
+               <i className="text-2xl fas fa-gift text-red-500 mr-2"></i>
+               <h2 className="text-2xl font-bold text-center mb-2">
+                 {result.title}
+               </h2>
+               <i className="text-2xl fas fa-tree text-green-500 ml-2"></i>
+             </div>
+             {result.date && (
+               <p className="text-center text-gray-600 mb-1">
+                 Date: {formatEventDate(result.date)}
+               </p>
+             )}
+             {result.maxAmount && (
+               <p className="text-center text-gray-600">
+                 Maximum Gift Amount: ${result.maxAmount}
+               </p>
+             )}
+           </div>
            <div>
              <label className="block text-sm font-medium text-gray-700 mb-1">
                Select your name
@@ -410,7 +573,7 @@ const clearAllData = () => {
                className="w-full p-3 border border-gray-300 rounded-md"
              >
                <option value="">Choose your name</option>
-               {result.map((pair, index) => (
+               {result.results.map((pair, index) => (
                  <option key={index} value={pair.giver}>
                    {pair.giver}
                  </option>
@@ -418,15 +581,47 @@ const clearAllData = () => {
              </select>
            </div>
 
-           {selectedViewer && !revealedPair && (
+           {/*selectedViewer && !revealedPair && (
              <button
                onClick={revealPairForViewer}
                className="w-full p-3 text-white bg-purple-600 rounded-md hover:bg-purple-700 transition duration-200"
              >
                Reveal Your Match!
              </button>
-           )}
+           ) */}
 
+           {selectedViewer && !revealedPair && (
+             <div className="space-y-2">
+               <button
+                 onClick={handleRevealClick}
+                 className={`w-full p-3 text-white rounded-md transition-all duration-300 
+        ${revealMessages[revealClicks].color} hover:opacity-90
+        relative overflow-hidden ${isWiggling ? "wiggle" : ""}`}
+               >
+                 <div
+                   className="absolute bottom-0 left-0 h-1 bg-white opacity-50"
+                   style={{
+                     width: `${
+                       (revealClicks / (revealMessages.length - 1)) * 100
+                     }%`,
+                     transition: "width 0.3s ease-in-out",
+                   }}
+                 />
+
+                 <span className="relative">
+                   {revealMessages[revealClicks].text}
+                 </span>
+               </button>
+
+               <p className="text-center text-sm text-gray-500 italic">
+                 {revealClicks > 0 &&
+                   revealClicks < revealMessages.length - 1 &&
+                   `Only ${
+                     revealMessages.length - revealClicks
+                   } more clicks to go!`}
+               </p>
+             </div>
+           )}
            {revealedPair && (
              <div className="bg-green-100 p-4 rounded-md text-center">
                <p className="text-sm text-gray-600 mb-2">
@@ -435,50 +630,56 @@ const clearAllData = () => {
                <p className="text-xl font-bold">{revealedPair.receiver}</p>
              </div>
            )}
-{/*
-           <div className="grid grid-cols-2 gap-2">
+
+           {isSharedView && (
              <button
+               onClick={shareResults}
+               className="w-full p-3 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200 flex items-center justify-center"
+             >
+               Share Link
+             </button>
+           )}
+
+           {!isSharedView && (
+             <div>
+               <div className="grid grid-cols-2 gap-2">
+                 {/* <button
                onClick={saveResults}
                className="p-3 text-white bg-purple-600 rounded-md hover:bg-purple-700 transition duration-200 flex items-center justify-center"
              >
                Save Results
              </button>
+             */}
 
-             <button
-               onClick={exportResults}
-               className="p-3 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition duration-200 flex items-center justify-center"
-             >
-               Download
-             </button>
+                 <button
+                   onClick={exportResults}
+                   className="p-3 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition duration-200 flex items-center justify-center"
+                 >
+                   Download Results
+                 </button>
 
-             <button
-               onClick={shareResults}
-               className="p-3 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200 flex items-center justify-center"
-             >
-               Share Link
-             </button>
-             <button
+                 <button
+                   onClick={shareResults}
+                   className="p-3 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200 flex items-center justify-center"
+                 >
+                   Share Link
+                 </button>
+                 {/*  <button
                onClick={captureResults}
                className="p-3 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition duration-200"
              >
                Save as Image
-             </button>
-           </div>
-*/}
-           <button
-             onClick={shareResults}
-             className="w-full p-3 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200 flex items-center justify-center"
-           >
-             Share Link
-           </button>
-
-           <button
-             onClick={returnToForm}
-             className="w-full p-3 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition duration-200 flex items-center justify-center"
-           >
-             Return to Form
-           </button>
-
+             </button> */}
+               </div>
+               <button
+                 onClick={returnToForm}
+                 className="mt-3 w-full p-3 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition duration-200 flex items-center justify-center"
+               >
+                 Return to Form
+               </button>
+             </div>
+           )}
+           {/*}
            {savedResults.length > 0 && (
              <div className="mt-6">
                <h3 className="text-lg font-bold mb-2">Previous Results</h3>
@@ -490,7 +691,7 @@ const clearAllData = () => {
                        {new Date(saved.date).toLocaleTimeString()}
                      </div>
                      <ul className="space-y-1">
-                       {saved.pairings.map((pair, pairIndex) => (
+                       {saved.result.results.map((pair, pairIndex) => (
                          <li key={pairIndex} className="text-sm">
                            {pair.giver} → {pair.receiver}
                          </li>
@@ -500,11 +701,53 @@ const clearAllData = () => {
                  ))}
                </div>
              </div>
-           )}
+           )} */}
          </div>
        ) : (
          <div>
            <div className="space-y-4">
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">
+                 Event Title
+               </label>
+               <input
+                 type="text"
+                 value={eventTitle}
+                 onChange={(e) => setEventTitle(e.target.value)}
+                 placeholder="Christmas 2024"
+                 className="w-full p-2 border rounded-md"
+               />
+             </div>
+
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">
+                 Event Date
+               </label>
+               <input
+                 type="date"
+                 value={eventDate}
+                 onChange={(e) => setEventDate(e.target.value)}
+                 className="w-full p-2 border rounded-md"
+               />
+             </div>
+
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">
+                 Maximum Gift Amount
+               </label>
+               <div className="relative">
+                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                   $
+                 </span>
+                 <input
+                   type="number"
+                   value={maxAmount}
+                   onChange={(e) => setMaxAmount(e.target.value)}
+                   placeholder="25"
+                   className="w-full p-2 pl-8 border rounded-md"
+                 />
+               </div>
+             </div>
              <input
                type="text"
                value={newName}
@@ -630,17 +873,41 @@ const clearAllData = () => {
            )}
 
            <div className="mt-6 space-y-4">
-             <button
-               onClick={organizeSecretSanta}
-               disabled={participants.length < 2}
-               className={`w-full p-3 text-white rounded-md transition duration-200 ${
-                 participants.length >= 2
-                   ? "bg-green-600 hover:bg-green-700"
-                   : "bg-gray-400 cursor-not-allowed"
-               }`}
-             >
-               Generate Secret Santa
-             </button>
+             {result ? (
+               // If results exist, show both options
+               <div className="grid grid-cols-2 gap-2">
+                 <button
+                   onClick={organizeSecretSanta}
+                   disabled={participants.length < 2}
+                   className={`p-3 text-white rounded-md transition duration-200 ${
+                     participants.length >= 2
+                       ? "bg-green-600 hover:bg-green-700"
+                       : "bg-gray-400 cursor-not-allowed"
+                   }`}
+                 >
+                   Generate New
+                 </button>
+                 <button
+                   onClick={() => setShowResults(true)}
+                   className="p-3 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition duration-200"
+                 >
+                   View Existing
+                 </button>
+               </div>
+             ) : (
+               // If no results exist, show only generate button
+               <button
+                 onClick={organizeSecretSanta}
+                 disabled={participants.length < 2}
+                 className={`w-full p-3 text-white rounded-md transition duration-200 ${
+                   participants.length >= 2
+                     ? "bg-green-600 hover:bg-green-700"
+                     : "bg-gray-400 cursor-not-allowed"
+                 }`}
+               >
+                 Generate Secret Santa
+               </button>
+             )}
            </div>
 
            {error && (

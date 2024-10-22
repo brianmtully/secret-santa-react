@@ -61,3 +61,24 @@ code {
 .flip-card-back {
   transform: rotateY(180deg);
 }
+
+
+@keyframes wiggle {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-5deg);
+  }
+
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+.wiggle {
+  animation: wiggle 0.3s ease-in-out;
+}
