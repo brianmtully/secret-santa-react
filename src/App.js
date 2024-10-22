@@ -65,6 +65,14 @@ function SecretSantaApp() {
     const saved = localStorage.getItem("secretSantaResults");
     return saved ? JSON.parse(saved) : [];
   });
+  const [selectedViewer, setSelectedViewer] = useState("");
+  const [revealedPair, setRevealedPair] = useState(null);
+
+  // Add this function to handle revealing a pair
+  const revealPairForViewer = () => {
+    const pair = result.find((p) => p.giver === selectedViewer);
+    setRevealedPair(pair);
+  };
   
 
 useEffect(() => {
@@ -374,6 +382,7 @@ const clearAllData = () => {
 
        {showResults ? (
          <div className="space-y-6">
+           {/*
            <div>
              <h2 className="text-xl font-bold mb-3">Current Results:</h2>
              <ul className="space-y-2">
@@ -387,7 +396,46 @@ const clearAllData = () => {
                ))}
              </ul>
            </div>
+  */}
+           <div>
+             <label className="block text-sm font-medium text-gray-700 mb-1">
+               Select your name
+             </label>
+             <select
+               value={selectedViewer}
+               onChange={(e) => {
+                 setSelectedViewer(e.target.value);
+                 setRevealedPair(null); // Reset revealed pair when changing selection
+               }}
+               className="w-full p-3 border border-gray-300 rounded-md"
+             >
+               <option value="">Choose your name</option>
+               {result.map((pair, index) => (
+                 <option key={index} value={pair.giver}>
+                   {pair.giver}
+                 </option>
+               ))}
+             </select>
+           </div>
 
+           {selectedViewer && !revealedPair && (
+             <button
+               onClick={revealPairForViewer}
+               className="w-full p-3 text-white bg-purple-600 rounded-md hover:bg-purple-700 transition duration-200"
+             >
+               Reveal Your Match!
+             </button>
+           )}
+
+           {revealedPair && (
+             <div className="bg-green-100 p-4 rounded-md text-center">
+               <p className="text-sm text-gray-600 mb-2">
+                 You are the Secret Santa for:
+               </p>
+               <p className="text-xl font-bold">{revealedPair.receiver}</p>
+             </div>
+           )}
+{/*
            <div className="grid grid-cols-2 gap-2">
              <button
                onClick={saveResults}
@@ -416,6 +464,14 @@ const clearAllData = () => {
                Save as Image
              </button>
            </div>
+*/}
+           <button
+             onClick={shareResults}
+             className="w-full p-3 text-white bg-green-600 rounded-md hover:bg-green-700 transition duration-200 flex items-center justify-center"
+           >
+             Share Link
+           </button>
+
            <button
              onClick={returnToForm}
              className="w-full p-3 text-white bg-gray-600 rounded-md hover:bg-gray-700 transition duration-200 flex items-center justify-center"
