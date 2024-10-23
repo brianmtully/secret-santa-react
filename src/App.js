@@ -569,6 +569,7 @@ const clearAllData = () => {
                onChange={(e) => {
                  setSelectedViewer(e.target.value);
                  setRevealedPair(null); // Reset revealed pair when changing selection
+                 setRevealClicks(0);
                }}
                className="w-full p-3 border border-gray-300 rounded-md"
              >
