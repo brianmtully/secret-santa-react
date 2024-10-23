@@ -134,7 +134,7 @@ const revealMessages = [
     setRevealedPair(pair);
   };
   
-
+/*
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const compressed = params.get("r");
@@ -146,6 +146,21 @@ useEffect(() => {
       setShowResults(true);
       setIsSharedView(decodedData.shared);
      // window.history.replaceState({}, "", window.location.pathname);
+    }
+  }
+}, []);
+*/
+
+useEffect(() => {
+  // Get the hash without the # symbol
+  const hash = window.location.hash.slice(1);
+
+  if (hash) {
+    const decodedData = decompress(hash);
+    if (decodedData) {
+      setResult(decodedData.results);
+      setShowResults(true);
+      setIsSharedView(decodedData.shared);
     }
   }
 }, []);
@@ -208,7 +223,7 @@ const compressWithViewType = (data, isShared = false) => {
   };
   return compress(dataWithType);
 };
-
+/*
   const compress = (data) => {
     try {
       const stringified = JSON.stringify(data);
@@ -230,7 +245,58 @@ const compressWithViewType = (data, isShared = false) => {
       return null;
     }
   };
+*/
 
+const compress = (data) => {
+  try {
+    const stringified = JSON.stringify(data);
+    // Convert to base64 and make URL-safe
+    return btoa(stringified)
+      .replace(/\+/g, "-") // Replace + with -
+      .replace(/\//g, "_") // Replace / with _
+      .replace(/=/g, ""); // Remove padding equals signs
+  } catch (e) {
+    console.error("Compression failed:", e);
+    return null;
+  }
+};
+
+const decompress = (compressed) => {
+  try {
+    // Restore base64 padding and characters
+    const base64 =
+      compressed
+        .replace(/-/g, "+") // Restore + from -
+        .replace(/_/g, "/") + // Restore / from _
+      "=".repeat((4 - (compressed.length % 4)) % 4); // Restore padding
+
+    return JSON.parse(atob(base64));
+  } catch (e) {
+    console.error("Decompression failed:", e);
+    return null;
+  }
+};
+
+const shareResults = async () => {
+  const compressed = compressWithViewType(result, true); // true for shared view
+  // Use # instead of ?r=
+  const shareUrl = `${window.location.origin}${window.location.pathname}#${compressed}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Secret Santa Pairings",
+        text: "Find out who you are Secret Santa for!",
+        url: shareUrl,
+      });
+    } catch (err) {
+      await navigator.clipboard.writeText(shareUrl);
+    }
+  } else {
+    await navigator.clipboard.writeText(shareUrl);
+  }
+};
+/*
 const shareResults = async () => {
   const compressed = compressWithViewType(result, true); // true for shared view
   const shareUrl = `${window.location.origin}${window.location.pathname}?r=${compressed}`;
@@ -249,7 +315,7 @@ const shareResults = async () => {
     await navigator.clipboard.writeText(shareUrl);
   }
 };
-
+*/
   useEffect(() => {
     console.log("Saving participants to localStorage:", participants);
     localStorage.setItem(
