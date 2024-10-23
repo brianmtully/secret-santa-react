@@ -280,7 +280,10 @@ const decompress = (compressed) => {
 const shareResults = async () => {
   const compressed = compressWithViewType(result, true); // true for shared view
   // Use # instead of ?r=
-  const shareUrl = `${window.location.origin}${window.location.pathname}#${compressed}`;
+  const shareUrl = `${window.location.origin}${window.location.pathname.replace(
+    /\/$/,
+    ""
+  )}#${compressed}`;
 
   if (navigator.share) {
     try {
